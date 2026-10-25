@@ -22,3 +22,18 @@ stage_5_confirmation,
 ROUND(stage_5_confirmation * 100 / stage_1_home) AS overall_conversion
 
 FROM funnel_stages;
+
+-- time for customer in stages
+WITH user_journey AS (
+SELECT
+  UserID,
+    MIN(  CASE WHEN PageType = "home" THEN Timestamp END) AS views,
+    MIN(  CASE WHEN PageType = "product_page" THEN Timestamp END) AS product,
+    MIN(  CASE WHEN PageType = "cart" THEN Timestamp END) AS cart,
+    MIN(  CASE WHEN PageType = "checkout" THEN Timestamp END) AS checkout,
+    MIN(  CASE WHEN PageType = "confirmation" THEN Timestamp END) AS confirmation  
+FROM `personal-projects-340200.funnel.customer_journey`
+
+GROUP BY UserID
+HAVING MIN(  CASE WHEN PageType = "confirmation" THEN Timestamp END) IS NOT NULL
+)
