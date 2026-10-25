@@ -1,0 +1,24 @@
+-- Define sales funnel and different stages
+WITH funnel_stages AS( 
+  SELECT
+    COUNT( DISTINCT CASE WHEN PageType = "home" THEN UserID END) AS stage_1_home,
+    COUNT( DISTINCT CASE WHEN PageType = "product_page" THEN UserID END) AS stage_2_product,
+    COUNT( DISTINCT CASE WHEN PageType = "cart" THEN UserID END) AS stage_3_cart,
+    COUNT( DISTINCT CASE WHEN PageType = "checkout" THEN UserID END) AS stage_4_checkout,
+    COUNT( DISTINCT CASE WHEN PageType = "confirmation" THEN UserID END) AS stage_5_confirmation   
+ FROM `personal-projects-340200.funnel.customer_journey`
+)
+
+-- converstion rates through funnel
+SELECT stage_1_home,
+ROUND(stage_2_product * 100 / stage_1_home) AS home_to_product_rate,
+stage_2_product,
+ROUND(stage_3_cart * 100 / stage_2_product) AS product_to_cart_rate,
+stage_3_cart,
+ROUND(stage_4_checkout * 100 / stage_3_cart) AS cart_to_checkout_rate,
+stage_4_checkout,
+ROUND(stage_5_confirmation * 100 / stage_4_checkout) AS checkout_to_confirmation_rate,
+stage_5_confirmation,
+ROUND(stage_5_confirmation * 100 / stage_1_home) AS overall_conversion
+
+FROM funnel_stages;
