@@ -23,17 +23,23 @@ ROUND(stage_5_confirmation * 100 / stage_1_home) AS overall_conversion
 
 FROM funnel_stages;
 
--- time for customer in stages
 WITH user_journey AS (
 SELECT
-  UserID,
-    MIN(  CASE WHEN PageType = "home" THEN Timestamp END) AS views,
-    MIN(  CASE WHEN PageType = "product_page" THEN Timestamp END) AS product,
-    MIN(  CASE WHEN PageType = "cart" THEN Timestamp END) AS cart,
-    MIN(  CASE WHEN PageType = "checkout" THEN Timestamp END) AS checkout,
-    MIN(  CASE WHEN PageType = "confirmation" THEN Timestamp END) AS confirmation  
+  SessionID,
+    MIN( CASE WHEN PageType = "home" THEN event_time END) AS home_views,
+    MIN( CASE WHEN PageType = "product_page" THEN event_time END) AS product_views,
+    MIN( CASE WHEN PageType = "cart" THEN event_time END) AS cart_views,
+    MIN( CASE WHEN PageType = "checkout" THEN event_time END) AS checkout_views,
+    MIN( CASE WHEN PageType = "confirmation" THEN event_time END) AS confirmation_views  
 FROM `personal-projects-340200.funnel.customer_journey`
 
-GROUP BY UserID
-HAVING MIN(  CASE WHEN PageType = "confirmation" THEN Timestamp END) IS NOT NULL
+GROUP BY SessionID
+HAVING MIN( CASE WHEN PageType = "confirmation" THEN event_time END) IS NOT NULL
 )
+SELECT COUNT(*) AS converted_users,
+ROUND(AVG(TIMESTAMP_DIFF(product_views,home_views, SECOND)),2) AS home_to_product_time,
+ROUND(AVG(TIMESTAMP_DIFF(cart_views,product_views, SECOND)),2) AS product_to_cart_time,
+ROUND(AVG(TIMESTAMP_DIFF(checkout_views,cart_views, SECOND)),2) AS cart_to_checkout_time,
+ROUND(AVG(TIMESTAMP_DIFF(confirmation_views,checkout_views, SECOND)),2) AS checkout_to_confirmation_time,
+ROUND(AVG(TIMESTAMP_DIFF(confirmation_views,home_views, SECOND)),2) AS home_to_confirmation_time,
+FROM  user_journey
