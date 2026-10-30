@@ -6,8 +6,7 @@ WITH funnel_stages AS(
     COUNT( DISTINCT CASE WHEN PageType = "cart" THEN UserID END) AS stage_3_cart,
     COUNT( DISTINCT CASE WHEN PageType = "checkout" THEN UserID END) AS stage_4_checkout,
     COUNT( DISTINCT CASE WHEN PageType = "confirmation" THEN UserID END) AS stage_5_confirmation   
- FROM `personal-projects-340200.funnel.customer_journey`
-)
+ FROM `personal-projects-340200.funnel.customer_journey`)
 
 -- converstion rates through funnel
 SELECT stage_1_home,
@@ -20,9 +19,34 @@ stage_4_checkout,
 ROUND(stage_5_confirmation * 100 / stage_4_checkout) AS checkout_to_confirmation_rate,
 stage_5_confirmation,
 ROUND(stage_5_confirmation * 100 / stage_1_home) AS overall_conversion
-
 FROM funnel_stages;
 
+-- conversion rates by source
+WITH source_funnel AS (
+SELECT
+  ReferralSource,
+    COUNT( DISTINCT CASE WHEN PageType = "home" THEN UserID END) AS views,
+    COUNT( DISTINCT CASE WHEN PageType = "product_page" THEN UserID END) AS product,
+    COUNT( DISTINCT CASE WHEN PageType = "cart" THEN UserID END) AS cart,
+    COUNT( DISTINCT CASE WHEN PageType = "checkout" THEN UserID END) AS checkout,
+    COUNT( DISTINCT CASE WHEN PageType = "confirmation" THEN UserID END) AS confirmation  
+FROM `personal-projects-340200.funnel.customer_journey`
+GROUP BY ReferralSource)
+SELECT ReferralSource, 
+ROUND(confirmation *100 / views) AS overall_rate,
+views,
+ROUND(product * 100 / views) AS views_to_product_rate,
+product,
+ROUND(cart * 100 / product) AS product_to_cart_rate,
+cart,
+ROUND(checkout * 100 / cart) AS cart_to_checkout_rate,
+checkout, 
+ROUND(confirmation *100 / checkout) AS checkout_to_confirmation,
+confirmation
+FROM source_funnel
+ORDER BY overall_rate DESC
+
+-- User time spent on each page
 WITH user_journey AS (
 SELECT
   SessionID,
@@ -32,7 +56,6 @@ SELECT
     MIN( CASE WHEN PageType = "checkout" THEN event_time END) AS checkout_views,
     MIN( CASE WHEN PageType = "confirmation" THEN event_time END) AS confirmation_views  
 FROM `personal-projects-340200.funnel.customer_journey`
-
 GROUP BY SessionID
 HAVING MIN( CASE WHEN PageType = "confirmation" THEN event_time END) IS NOT NULL
 )
@@ -43,3 +66,14 @@ ROUND(AVG(TIMESTAMP_DIFF(checkout_views,cart_views, SECOND)),2) AS cart_to_check
 ROUND(AVG(TIMESTAMP_DIFF(confirmation_views,checkout_views, SECOND)),2) AS checkout_to_confirmation_time,
 ROUND(AVG(TIMESTAMP_DIFF(confirmation_views,home_views, SECOND)),2) AS home_to_confirmation_time,
 FROM  user_journey
+
+-- Final stats
+WITH funnel_revenue AS (
+SELECT
+    COUNT(CASE WHEN PageType = "home" THEN UserID END) AS total_visits,
+    COUNT(DISTINCT CASE WHEN PageType = "home" THEN UserID END) AS total_unique_visitors,
+    COUNT(DISTINCT CASE WHEN PageType = "confirmation" THEN UserID END) AS total_unique_buyers,
+    COUNT(CASE WHEN PageType = "confirmation" THEN UserID END) AS total_buys
+FROM `personal-projects-340200.funnel.customer_journey`)
+SELECT total_visits, total_unique_visitors, total_unique_buyers, total_buys
+FROM funnel_revenue
